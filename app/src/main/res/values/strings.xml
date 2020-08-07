@@ -2,4 +2,6 @@
     <string name="app_name">Square</string>
     <string name="action_settings">Settings</string>
     <string name="send_to">Share image</string>
+    <string name="open_an_image">Open An Image</string>
+    <string name="a_squared_image">A squared image</string>
 </resources>
