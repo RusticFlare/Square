@@ -120,13 +120,6 @@ class MainActivity : AppCompatActivity() {
                 BitmapFactory.decodeStream(it, null, options)
             }
 
-//            val imageBitmap = ImageDecoder.decodeBitmap(
-//                ImageDecoder.createSource(contentResolver, data?.data!!)
-//            ) { decoder, info, source ->
-//                check(info.size.width != 0) { "Fuck" }
-//                check(info.size.width != 0) { "Ballz" }
-//            }
-
             val width = options.outWidth
             val height = options.outHeight
 
