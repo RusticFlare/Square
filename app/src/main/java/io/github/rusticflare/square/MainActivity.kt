@@ -2,8 +2,6 @@ package io.github.rusticflare.square
 
 import android.Manifest
 import android.app.Activity
-import android.content.ContentValues
-import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
@@ -11,7 +9,6 @@ import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.net.Uri
 import android.os.Bundle
-import android.provider.MediaStore
 import android.view.Menu
 import android.view.MenuItem
 import android.widget.Toast
@@ -29,7 +26,23 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        if (checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_DENIED ||
+            checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_DENIED){
+            //permission denied
+            val permissions = arrayOf(
+                Manifest.permission.READ_EXTERNAL_STORAGE,
+                Manifest.permission.WRITE_EXTERNAL_STORAGE
+            );
+            //show popup to request runtime permission
+            requestPermissions(permissions, PERMISSION_CODE);
+        }
+
         setContentView(R.layout.activity_main)
+
+        if (intent?.action == Intent.ACTION_SEND && intent.type?.startsWith("image/") == true) {
+            handleImage(intent.clipData?.getItemAt(0)?.uri!!)
+        }
 
         open.setOnClickListener {
             if (checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_DENIED ||
@@ -113,43 +126,46 @@ class MainActivity : AppCompatActivity() {
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         if (resultCode == Activity.RESULT_OK && requestCode == IMAGE_PICK_CODE) {
-
-            val options = BitmapFactory.Options()
-            options.inJustDecodeBounds = true
-            contentResolver.openInputStream(data?.data!!).use {
-                BitmapFactory.decodeStream(it, null, options)
-            }
-
-            val width = options.outWidth
-            val height = options.outHeight
-
-            val (newWidth, newHeight) = if (width <= 1080 && height <= 1080) {
-                width to height
-            } else if (width > height) {
-                1080 to (1080 * (height.toDouble() / width)).toInt()
-            } else {
-                (1080 * (width.toDouble() / height)).toInt() to 1080
-            }
-
-            val imageBitmap = contentResolver.openInputStream(data.data!!).use {
-                BitmapFactory.decodeStream(it)
-            }!!
-
-            val resized = Bitmap.createScaledBitmap(imageBitmap, newWidth, newHeight, true)
-
-            val bitmap = Bitmap.createBitmap(1080, 1080, Bitmap.Config.ARGB_8888)
-                .applyCanvas {
-                    drawColor(Color.WHITE)
-                    drawBitmap(resized, (1080f - newWidth) / 2, (1080f - newHeight) / 2, null)
-                }
-
-            val tempFile = File.createTempFile("squared", ".jpg", cacheDir)
-            FileOutputStream(tempFile).use {
-                bitmap.compress(Bitmap.CompressFormat.JPEG, 100, it)
-            }
-            currentImageUri = bitmap.externalUri()
-            image_view.setImageURI(currentImageUri)
+            handleImage(data?.data!!)
         }
+    }
+
+    private fun handleImage(uri: Uri) {
+        val options = BitmapFactory.Options()
+        options.inJustDecodeBounds = true
+        contentResolver.openInputStream(uri).use {
+            BitmapFactory.decodeStream(it, null, options)
+        }
+
+        val width = options.outWidth
+        val height = options.outHeight
+
+        val (newWidth, newHeight) = if (width <= 1080 && height <= 1080) {
+            width to height
+        } else if (width > height) {
+            1080 to (1080 * (height.toDouble() / width)).toInt()
+        } else {
+            (1080 * (width.toDouble() / height)).toInt() to 1080
+        }
+
+        val imageBitmap = contentResolver.openInputStream(uri).use {
+            BitmapFactory.decodeStream(it)
+        }!!
+
+        val resized = Bitmap.createScaledBitmap(imageBitmap, newWidth, newHeight, true)
+
+        val bitmap = Bitmap.createBitmap(1080, 1080, Bitmap.Config.ARGB_8888)
+            .applyCanvas {
+                drawColor(Color.WHITE)
+                drawBitmap(resized, (1080f - newWidth) / 2, (1080f - newHeight) / 2, null)
+            }
+
+        val tempFile = File.createTempFile("squared", ".jpg", cacheDir)
+        FileOutputStream(tempFile).use {
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 100, it)
+        }
+        currentImageUri = bitmap.externalUri()
+        image_view.setImageURI(currentImageUri)
     }
 
     private fun Bitmap.externalUri(): Uri {
